@@ -29,6 +29,7 @@ import Disclaimers from "./pages/legal/Disclaimers";
 // Auth Pages
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
+import Onboarding from "./pages/auth/Onboarding";
 
 // Dashboard Pages
 import DashboardIndex from "./pages/dashboard/DashboardIndex";
@@ -81,6 +82,11 @@ const App = () => (
             {/* Auth Pages */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/onboarding" element={
+              <ProtectedRoute skipOnboardingCheck>
+                <Onboarding />
+              </ProtectedRoute>
+            } />
             
             {/* Dashboard Routes */}
             <Route path="/dashboard" element={

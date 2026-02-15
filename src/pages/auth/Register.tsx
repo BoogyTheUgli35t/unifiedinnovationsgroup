@@ -42,7 +42,7 @@ const Register = () => {
 
     setIsLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -57,6 +57,11 @@ const Register = () => {
         variant: "destructive",
       });
     } else {
+      // Fire welcome email (non-blocking)
+      supabase.functions.invoke("send-welcome-email", {
+        body: { email, name: email.split("@")[0] },
+      }).catch(() => {});
+
       toast({
         title: "Account created!",
         description: "Please check your email to verify your account.",

@@ -1,14 +1,16 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: string;
+  skipOnboardingCheck?: boolean;
 }
 
-export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { session, loading, roles } = useAuth();
+export function ProtectedRoute({ children, requiredRole, skipOnboardingCheck }: ProtectedRouteProps) {
+  const { session, user, loading, roles } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -23,6 +25,11 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Redirect to onboarding if profile not completed
+  if (!skipOnboardingCheck && user && !user.onboarding_completed && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
   }
 
   if (requiredRole && !roles.includes(requiredRole)) {
