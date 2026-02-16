@@ -109,7 +109,7 @@ const Onboarding = () => {
         annual_income_range: annualIncomeRange,
         preferred_account_type: preferredAccountType,
         onboarding_completed: true,
-      })
+      } as any)
       .eq("user_id", session.user.id);
 
     if (error) {

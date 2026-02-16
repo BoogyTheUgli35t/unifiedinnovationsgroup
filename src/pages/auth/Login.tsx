@@ -36,6 +36,7 @@ const Login = () => {
         title: "Welcome back!",
         description: "You have successfully logged in.",
       });
+      // ProtectedRoute handles onboarding redirect
       navigate("/dashboard");
     }
 
