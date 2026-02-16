@@ -28,7 +28,7 @@ export function ProtectedRoute({ children, requiredRole, skipOnboardingCheck }: 
   }
 
   // Redirect to onboarding if profile not completed
-  if (!skipOnboardingCheck && user && !user.onboarding_completed && location.pathname !== '/onboarding') {
+  if (!skipOnboardingCheck && user && !(user as any).onboarding_completed && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />;
   }
 
