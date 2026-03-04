@@ -38,6 +38,7 @@ import DashboardCrypto from "./pages/dashboard/Crypto";
 import DashboardInvestments from "./pages/dashboard/Investments";
 import DashboardTransfers from "./pages/dashboard/Transfers";
 import DashboardSettings from "./pages/dashboard/Settings";
+import DashboardDocuments from "./pages/dashboard/Documents";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -112,6 +113,11 @@ const App = () => (
             <Route path="/dashboard/transfers" element={
               <ProtectedRoute>
                 <DashboardTransfers />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard/documents" element={
+              <ProtectedRoute>
+                <DashboardDocuments />
               </ProtectedRoute>
             } />
             <Route path="/dashboard/settings" element={

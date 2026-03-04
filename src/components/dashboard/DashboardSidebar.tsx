@@ -5,6 +5,7 @@ import {
   TrendingUp,
   DollarSign,
   Send,
+  FileCheck,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ const dashboardItems = [
   { title: 'Crypto', url: '/dashboard/crypto', icon: TrendingUp },
   { title: 'Investments', url: '/dashboard/investments', icon: DollarSign },
   { title: 'Transfers', url: '/dashboard/transfers', icon: Send },
+  { title: 'Documents', url: '/dashboard/documents', icon: FileCheck },
   { title: 'Settings', url: '/dashboard/settings', icon: Settings },
 ];
 
