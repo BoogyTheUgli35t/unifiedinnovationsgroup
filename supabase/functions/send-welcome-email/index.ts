@@ -39,7 +39,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`,
       },
       body: JSON.stringify({
-        from: 'UIG Banking <noreply@unifiedinnovationsgroup.online>',
+        from: 'UIG Banking <onboarding@resend.dev>',
         to: [email],
         subject: 'Welcome to UIG — Your Account Has Been Created',
         html: `
