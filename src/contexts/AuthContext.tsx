@@ -10,6 +10,7 @@ interface AuthContextType {
   isAdmin: boolean;
   loading: boolean;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,6 +85,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const refreshUser = async () => {
+    if (session?.user?.id) {
+      await loadUserProfile(session.user.id);
+    }
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -100,6 +107,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin,
         loading,
         logout,
+        refreshUser,
       }}
     >
       {children}
