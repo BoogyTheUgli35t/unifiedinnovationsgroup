@@ -84,7 +84,7 @@ export default function AdminUserDetail() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
       await logAction({ actionType: 'kyc_status_changed', targetType: 'profile', targetId: id, reason, oldValue: { kyc_status: profile.kyc_status }, newValue: { kyc_status: kycStatusModal.newStatus } });
-      setProfile({ ...profile, kyc_status: kycStatusModal.newStatus as any });
+      setProfile({ ...profile, kyc_status: kycStatusModal.newStatus as Tables<'profiles'>['kyc_status'] });
       toast({ title: 'Success', description: `KYC status updated to ${kycStatusModal.newStatus}` });
     }
     setActionLoading(false);
