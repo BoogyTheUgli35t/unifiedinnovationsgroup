@@ -6,6 +6,8 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { CreditCard, TrendingUp, Send, FileCheck, ArrowRight, AlertTriangle } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Tables } from '@/integrations/supabase/types';
 
 interface AccountBalance {
   id: string;
@@ -21,6 +23,7 @@ export default function DashboardIndex() {
   const [totalBalance, setTotalBalance] = useState(0);
   const [recentTxCount, setRecentTxCount] = useState(0);
   const [kycDocCount, setKycDocCount] = useState(0);
+  const [transactions, setTransactions] = useState<Tables<'transactions'>[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,10 +31,11 @@ export default function DashboardIndex() {
 
     const loadData = async () => {
       try {
-        const [acctRes, txRes, kycRes] = await Promise.all([
+        const [acctRes, txRes, kycRes, recentTxRes] = await Promise.all([
           supabase.from('accounts').select('id, account_type, balance, currency').eq('user_id', session.user.id),
           supabase.from('transactions').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
           supabase.from('kyc_documents').select('id', { count: 'exact', head: true }).eq('user_id', session.user.id),
+          supabase.from('transactions').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(10),
         ]);
 
         const accts = acctRes.data || [];
@@ -39,6 +43,7 @@ export default function DashboardIndex() {
         setTotalBalance(accts.reduce((sum, a) => sum + Number(a.balance), 0));
         setRecentTxCount(txRes.count ?? 0);
         setKycDocCount(kycRes.count ?? 0);
+        setTransactions(recentTxRes.data || []);
       } catch (error) {
         console.error('Error loading dashboard:', error);
       } finally {
@@ -48,6 +53,13 @@ export default function DashboardIndex() {
 
     loadData();
   }, [session?.user?.id]);
+
+  // Build chart data from transactions
+  const chartData = transactions.slice().reverse().map(t => ({
+    date: new Date(t.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    amount: Number(t.amount),
+    type: t.type,
+  }));
 
   const quickActions = [
     { label: 'View Accounts', icon: CreditCard, path: '/dashboard/accounts', color: 'text-blue-500' },
@@ -80,38 +92,48 @@ export default function DashboardIndex() {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Balance</CardDescription>
-            </CardHeader>
+            <CardHeader className="pb-2"><CardDescription>Total Balance</CardDescription></CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">${totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Accounts</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{accounts.length}</p>
-            </CardContent>
+            <CardHeader className="pb-2"><CardDescription>Accounts</CardDescription></CardHeader>
+            <CardContent><p className="text-3xl font-bold">{accounts.length}</p></CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Transactions</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{recentTxCount}</p>
-            </CardContent>
+            <CardHeader className="pb-2"><CardDescription>Transactions</CardDescription></CardHeader>
+            <CardContent><p className="text-3xl font-bold">{recentTxCount}</p></CardContent>
           </Card>
           <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>KYC Documents</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">{kycDocCount}</p>
-            </CardContent>
+            <CardHeader className="pb-2"><CardDescription>KYC Documents</CardDescription></CardHeader>
+            <CardContent><p className="text-3xl font-bold">{kycDocCount}</p></CardContent>
           </Card>
         </div>
+
+        {/* Transaction Activity Chart */}
+        {chartData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+              <CardDescription>Transaction amounts over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 30%, 20%)" />
+                  <XAxis dataKey="date" tick={{ fill: 'hsl(220, 15%, 55%)', fontSize: 12 }} />
+                  <YAxis tick={{ fill: 'hsl(220, 15%, 55%)', fontSize: 12 }} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'hsl(220, 42%, 10%)', border: '1px solid hsl(220, 30%, 20%)', borderRadius: 8 }}
+                    formatter={(value: number) => [`$${value.toLocaleString()}`, 'Amount']}
+                  />
+                  <Area type="monotone" dataKey="amount" stroke="hsl(43, 74%, 49%)" fill="hsl(43, 74%, 49%)" fillOpacity={0.15} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Account Balances */}
         {!loading && accounts.length > 0 && (
@@ -142,9 +164,7 @@ export default function DashboardIndex() {
 
         {/* Quick Actions */}
         <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {quickActions.map((action) => (
@@ -159,9 +179,7 @@ export default function DashboardIndex() {
 
         {/* Account Info */}
         <Card>
-          <CardHeader>
-            <CardTitle>Account Status</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Account Status</CardTitle></CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex justify-between md:flex-col md:gap-1">

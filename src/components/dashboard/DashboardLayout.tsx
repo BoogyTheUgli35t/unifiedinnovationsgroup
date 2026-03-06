@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DashboardSidebar } from './DashboardSidebar';
+import { NotificationBell } from './NotificationBell';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -12,9 +13,7 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
     <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <DashboardSidebar />
-
         <main className="flex-1 flex flex-col">
-          {/* Header */}
           <header className="border-b bg-background sticky top-0 z-10">
             <div className="flex items-center justify-between h-16 px-6">
               <div className="flex items-center gap-4">
@@ -26,10 +25,9 @@ export function DashboardLayout({ children, title, description }: DashboardLayou
                   </div>
                 )}
               </div>
+              <NotificationBell />
             </div>
           </header>
-
-          {/* Content */}
           <div className="flex-1 overflow-auto p-6">
             {children}
           </div>

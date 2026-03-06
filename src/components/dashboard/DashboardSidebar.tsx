@@ -8,6 +8,7 @@ import {
   FileCheck,
   Settings,
   LogOut,
+  ShieldCheck,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -37,11 +38,7 @@ const dashboardItems = [
 export function DashboardSidebar() {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const location = useLocation();
-  const { user, logout } = useAuth();
-  const currentPath = location.pathname;
-
-  const isActive = (path: string) => currentPath === path;
+  const { user, isAdmin, logout } = useAuth();
 
   return (
     <Sidebar collapsible="icon">
@@ -68,6 +65,29 @@ export function DashboardSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin Link */}
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administration</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <NavLink
+                      to="/admin"
+                      className="hover:bg-destructive/10 text-destructive"
+                      activeClassName="bg-destructive/20 text-destructive font-medium"
+                    >
+                      <ShieldCheck className="h-4 w-4" />
+                      {!collapsed && <span>Admin Portal</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {/* User Profile Section */}
         {!collapsed && (
