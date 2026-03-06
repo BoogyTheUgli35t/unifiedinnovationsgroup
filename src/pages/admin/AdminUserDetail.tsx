@@ -69,7 +69,7 @@ export default function AdminUserDetail() {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
       await logAction({ actionType: 'account_status_changed', targetType: 'profile', targetId: id, reason, oldValue: { account_status: profile.account_status }, newValue: { account_status: statusModal.newStatus } });
-      setProfile({ ...profile, account_status: statusModal.newStatus as any });
+      setProfile({ ...profile, account_status: statusModal.newStatus as Tables<'profiles'>['account_status'] });
       toast({ title: 'Success', description: `Account status updated to ${statusModal.newStatus}` });
     }
     setActionLoading(false);
