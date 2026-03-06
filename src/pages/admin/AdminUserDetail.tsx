@@ -79,7 +79,7 @@ export default function AdminUserDetail() {
   const handleUpdateKycStatus = async (reason: string) => {
     if (!profile || !id) return;
     setActionLoading(true);
-    const { error } = await supabase.from('profiles').update({ kyc_status: kycStatusModal.newStatus }).eq('user_id', id);
+    const { error } = await supabase.from('profiles').update({ kyc_status: kycStatusModal.newStatus as Tables<'profiles'>['kyc_status'] }).eq('user_id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
