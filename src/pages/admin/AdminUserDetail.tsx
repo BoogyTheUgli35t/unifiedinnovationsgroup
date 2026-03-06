@@ -64,7 +64,7 @@ export default function AdminUserDetail() {
   const handleUpdateAccountStatus = async (reason: string) => {
     if (!profile || !id) return;
     setActionLoading(true);
-    const { error } = await supabase.from('profiles').update({ account_status: statusModal.newStatus }).eq('user_id', id);
+    const { error } = await supabase.from('profiles').update({ account_status: statusModal.newStatus as Tables<'profiles'>['account_status'] }).eq('user_id', id);
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
