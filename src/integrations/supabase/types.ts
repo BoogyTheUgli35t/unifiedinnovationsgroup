@@ -22,7 +22,9 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          routing_number: string | null
           status: Database["public"]["Enums"]["account_status"]
+          swift_bic: string | null
           user_id: string
         }
         Insert: {
@@ -32,7 +34,9 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          routing_number?: string | null
           status?: Database["public"]["Enums"]["account_status"]
+          swift_bic?: string | null
           user_id: string
         }
         Update: {
@@ -42,7 +46,9 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          routing_number?: string | null
           status?: Database["public"]["Enums"]["account_status"]
+          swift_bic?: string | null
           user_id?: string
         }
         Relationships: []
@@ -400,6 +406,11 @@ export type Database = {
           amount: number
           approved_at: string | null
           approved_by: string | null
+          beneficiary_account: string | null
+          beneficiary_address: string | null
+          beneficiary_name: string | null
+          beneficiary_routing: string | null
+          beneficiary_swift: string | null
           counterparty: string | null
           created_at: string
           currency: string
@@ -407,6 +418,7 @@ export type Database = {
           id: string
           requires_approval: boolean
           status: Database["public"]["Enums"]["transaction_status"]
+          transfer_method: string | null
           type: Database["public"]["Enums"]["transaction_type"]
           user_id: string
         }
@@ -415,6 +427,11 @@ export type Database = {
           amount: number
           approved_at?: string | null
           approved_by?: string | null
+          beneficiary_account?: string | null
+          beneficiary_address?: string | null
+          beneficiary_name?: string | null
+          beneficiary_routing?: string | null
+          beneficiary_swift?: string | null
           counterparty?: string | null
           created_at?: string
           currency?: string
@@ -422,6 +439,7 @@ export type Database = {
           id?: string
           requires_approval?: boolean
           status?: Database["public"]["Enums"]["transaction_status"]
+          transfer_method?: string | null
           type: Database["public"]["Enums"]["transaction_type"]
           user_id: string
         }
@@ -430,6 +448,11 @@ export type Database = {
           amount?: number
           approved_at?: string | null
           approved_by?: string | null
+          beneficiary_account?: string | null
+          beneficiary_address?: string | null
+          beneficiary_name?: string | null
+          beneficiary_routing?: string | null
+          beneficiary_swift?: string | null
           counterparty?: string | null
           created_at?: string
           currency?: string
@@ -437,6 +460,7 @@ export type Database = {
           id?: string
           requires_approval?: boolean
           status?: Database["public"]["Enums"]["transaction_status"]
+          transfer_method?: string | null
           type?: Database["public"]["Enums"]["transaction_type"]
           user_id?: string
         }
