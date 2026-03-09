@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminGuard } from "@/components/admin/AdminGuard";
+import { SupportChatbot } from "@/components/chat/SupportChatbot";
 
 // Pages
 import Index from "./pages/Index";
@@ -30,6 +31,8 @@ import Disclaimers from "./pages/legal/Disclaimers";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 import Onboarding from "./pages/auth/Onboarding";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
 
 // Dashboard Pages
 import DashboardIndex from "./pages/dashboard/DashboardIndex";
@@ -39,6 +42,7 @@ import DashboardInvestments from "./pages/dashboard/Investments";
 import DashboardTransfers from "./pages/dashboard/Transfers";
 import DashboardSettings from "./pages/dashboard/Settings";
 import DashboardDocuments from "./pages/dashboard/Documents";
+import SupportTickets from "./pages/dashboard/SupportTickets";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -83,6 +87,8 @@ const App = () => (
             {/* Auth Pages */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/onboarding" element={
               <ProtectedRoute skipOnboardingCheck>
                 <Onboarding />
@@ -90,41 +96,14 @@ const App = () => (
             } />
             
             {/* Dashboard Routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <DashboardIndex />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/accounts" element={
-              <ProtectedRoute>
-                <DashboardAccounts />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/crypto" element={
-              <ProtectedRoute>
-                <DashboardCrypto />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/investments" element={
-              <ProtectedRoute>
-                <DashboardInvestments />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/transfers" element={
-              <ProtectedRoute>
-                <DashboardTransfers />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/documents" element={
-              <ProtectedRoute>
-                <DashboardDocuments />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard/settings" element={
-              <ProtectedRoute>
-                <DashboardSettings />
-              </ProtectedRoute>
-            } />
+            <Route path="/dashboard" element={<ProtectedRoute><DashboardIndex /></ProtectedRoute>} />
+            <Route path="/dashboard/accounts" element={<ProtectedRoute><DashboardAccounts /></ProtectedRoute>} />
+            <Route path="/dashboard/crypto" element={<ProtectedRoute><DashboardCrypto /></ProtectedRoute>} />
+            <Route path="/dashboard/investments" element={<ProtectedRoute><DashboardInvestments /></ProtectedRoute>} />
+            <Route path="/dashboard/transfers" element={<ProtectedRoute><DashboardTransfers /></ProtectedRoute>} />
+            <Route path="/dashboard/documents" element={<ProtectedRoute><DashboardDocuments /></ProtectedRoute>} />
+            <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+            <Route path="/dashboard/support" element={<ProtectedRoute><SupportTickets /></ProtectedRoute>} />
             
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
@@ -141,6 +120,9 @@ const App = () => (
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          
+          {/* Global Support Chatbot */}
+          <SupportChatbot />
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>

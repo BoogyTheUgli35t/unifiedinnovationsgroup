@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useToast } from '@/hooks/use-toast';
 import { Tables } from '@/integrations/supabase/types';
-import { ShieldAlert, ShieldCheck, Check, X, FileText } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Check, X, FileText, ExternalLink, Download } from 'lucide-react';
 
 export default function AdminUserDetail() {
   const { id } = useParams<{ id: string }>();
@@ -106,6 +106,15 @@ export default function AdminUserDetail() {
     setKycModal({ open: false, docId: '', action: 'approve' });
   };
 
+  const viewDocument = async (fileUrl: string) => {
+    const { data, error } = await supabase.storage.from('kyc-documents').createSignedUrl(fileUrl, 300);
+    if (error || !data?.signedUrl) {
+      toast({ title: 'Error', description: 'Could not load document. ' + (error?.message || ''), variant: 'destructive' });
+      return;
+    }
+    window.open(data.signedUrl, '_blank');
+  };
+
   if (!profile) {
     return <AdminLayout title="User Detail"><p className="text-muted-foreground">Loading...</p></AdminLayout>;
   }
@@ -172,23 +181,24 @@ export default function AdminUserDetail() {
             <CardHeader><CardTitle className="text-lg">Accounts ({accounts.length})</CardTitle></CardHeader>
             <CardContent>
               <Table>
-                <TableHeader><TableRow><TableHead>Number</TableHead><TableHead>Type</TableHead><TableHead>Balance</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Number</TableHead><TableHead>Type</TableHead><TableHead>Balance</TableHead><TableHead>Routing</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {accounts.map((a) => (
                     <TableRow key={a.id}>
                       <TableCell className="font-mono text-sm">{a.account_number}</TableCell>
                       <TableCell className="capitalize">{a.account_type}</TableCell>
                       <TableCell>${Number(a.balance).toLocaleString()}</TableCell>
+                      <TableCell className="font-mono text-xs">{(a as any).routing_number || '—'}</TableCell>
                       <TableCell><Badge variant="outline">{a.status}</Badge></TableCell>
                     </TableRow>
                   ))}
-                  {accounts.length === 0 && <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">No accounts</TableCell></TableRow>}
+                  {accounts.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground">No accounts</TableCell></TableRow>}
                 </TableBody>
               </Table>
             </CardContent>
           </Card>
 
-          {/* KYC Documents */}
+          {/* KYC Documents with View */}
           <Card>
             <CardHeader><CardTitle className="text-lg">KYC Documents ({kycDocs.length})</CardTitle></CardHeader>
             <CardContent>
@@ -203,9 +213,15 @@ export default function AdminUserDetail() {
                         <div>
                           <p className="text-sm font-medium capitalize">{doc.document_type.replace('_', ' ')}</p>
                           <p className="text-xs text-muted-foreground">{new Date(doc.created_at).toLocaleDateString()}</p>
+                          {doc.rejection_reason && (
+                            <p className="text-xs text-destructive mt-1">Reason: {doc.rejection_reason}</p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => viewDocument(doc.file_url)}>
+                          <ExternalLink className="mr-1 h-3 w-3" /> View
+                        </Button>
                         <Badge variant={doc.status === 'pending' ? 'secondary' : doc.status === 'approved' ? 'default' : 'destructive'}>{doc.status}</Badge>
                         {doc.status === 'pending' && (
                           <div className="flex gap-1">

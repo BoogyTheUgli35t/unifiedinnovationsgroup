@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   ShieldCheck,
+  LifeBuoy,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +33,7 @@ const dashboardItems = [
   { title: 'Investments', url: '/dashboard/investments', icon: DollarSign },
   { title: 'Transfers', url: '/dashboard/transfers', icon: Send },
   { title: 'Documents', url: '/dashboard/documents', icon: FileCheck },
+  { title: 'Support', url: '/dashboard/support', icon: LifeBuoy },
   { title: 'Settings', url: '/dashboard/settings', icon: Settings },
 ];
 
@@ -66,7 +68,6 @@ export function DashboardSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Admin Link */}
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel>Administration</SidebarGroupLabel>
@@ -89,7 +90,6 @@ export function DashboardSidebar() {
           </SidebarGroup>
         )}
 
-        {/* User Profile Section */}
         {!collapsed && (
           <SidebarGroup className="mt-auto">
             <SidebarGroupContent>
@@ -98,14 +98,8 @@ export function DashboardSidebar() {
                   <p className="text-xs font-medium text-muted-foreground">Logged in as</p>
                   <p className="text-sm font-semibold truncate">{user?.full_name || user?.email}</p>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-start"
-                  onClick={logout}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Logout
+                <Button variant="outline" size="sm" className="w-full justify-start" onClick={logout}>
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
                 </Button>
               </div>
             </SidebarGroupContent>
