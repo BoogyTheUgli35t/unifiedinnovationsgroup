@@ -7,11 +7,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Bell, Lock } from 'lucide-react';
+import { User, Shield, Bell, Lock, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function Settings() {
   const { user, session, refreshUser } = useAuth();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const [saving, setSaving] = useState(false);
 
   const [fullName, setFullName] = useState(user?.full_name || '');
@@ -147,6 +149,27 @@ export default function Settings() {
                 <Label className="text-muted-foreground">Member Since</Label>
                 <p className="font-medium mt-1">{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Appearance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />} Appearance
+            </CardTitle>
+            <CardDescription>Customize your visual experience</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Theme</p>
+                <p className="text-sm text-muted-foreground">Switch between dark and light mode</p>
+              </div>
+              <Button variant="outline" onClick={toggleTheme} className="gap-2">
+                {theme === 'dark' ? <><Sun className="h-4 w-4" /> Light Mode</> : <><Moon className="h-4 w-4" /> Dark Mode</>}
+              </Button>
             </div>
           </CardContent>
         </Card>

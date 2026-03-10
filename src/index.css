@@ -85,12 +85,83 @@
     --sidebar-border: 220 30% 18%;
     --sidebar-ring: 43 74% 49%;
     
-    /* Chart Colors */
+  /* Chart Colors */
     --chart-1: 43 74% 49%;
     --chart-2: 200 70% 50%;
     --chart-3: 142 71% 45%;
     --chart-4: 280 65% 60%;
     --chart-5: 0 72% 51%;
+  }
+
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 220 40% 10%;
+    
+    --navy-950: 220 45% 96%;
+    --navy-900: 220 25% 92%;
+    --navy-800: 220 20% 88%;
+    --navy-700: 220 18% 78%;
+    --navy-600: 220 15% 65%;
+    --navy-500: 220 12% 50%;
+    --navy-400: 220 15% 40%;
+    --navy-300: 220 20% 30%;
+    --navy-200: 220 25% 20%;
+    --navy-100: 220 30% 12%;
+    
+    --gold: 43 74% 42%;
+    --gold-light: 43 80% 50%;
+    --gold-dark: 43 70% 35%;
+    --gold-muted: 43 30% 50%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 10%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 10%;
+    
+    --primary: 43 74% 42%;
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 220 15% 92%;
+    --secondary-foreground: 220 40% 10%;
+    
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 45%;
+    
+    --accent: 220 15% 92%;
+    --accent-foreground: 43 74% 42%;
+    
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+    
+    --warning: 38 92% 45%;
+    --warning-foreground: 220 40% 10%;
+    
+    --border: 220 15% 88%;
+    --input: 220 15% 92%;
+    --ring: 43 74% 42%;
+    
+    --glass-bg: 0 0% 100% / 0.8;
+    --glass-border: 220 15% 85% / 0.5;
+    --glass-shadow: 220 20% 80% / 0.3;
+    
+    --gradient-navy: linear-gradient(135deg, hsl(0 0% 98%) 0%, hsl(220 15% 95%) 100%);
+    --gradient-gold: linear-gradient(135deg, hsl(43 74% 42%) 0%, hsl(43 80% 50%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(220 20% 96%) 0%, hsl(0 0% 98%) 50%, hsl(220 15% 95%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100% / 0.9) 0%, hsl(220 15% 97% / 0.7) 100%);
+    --gradient-glow: radial-gradient(ellipse at center, hsl(43 74% 42% / 0.1) 0%, transparent 70%);
+    
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 30%;
+    --sidebar-primary: 43 74% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 15% 95%;
+    --sidebar-accent-foreground: 220 40% 10%;
+    --sidebar-border: 220 15% 88%;
+    --sidebar-ring: 43 74% 42%;
   }
 }
 
