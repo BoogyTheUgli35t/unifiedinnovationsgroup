@@ -13,6 +13,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 export default function Settings() {
   const { user, session, refreshUser } = useAuth();
   const { toast } = useToast();
+  const { theme, toggleTheme } = useTheme();
   const [saving, setSaving] = useState(false);
 
   const [fullName, setFullName] = useState(user?.full_name || '');
