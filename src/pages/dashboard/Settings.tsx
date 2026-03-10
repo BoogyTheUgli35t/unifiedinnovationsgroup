@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { User, Shield, Bell, Lock } from 'lucide-react';
+import { User, Shield, Bell, Lock, Sun, Moon } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function Settings() {
   const { user, session, refreshUser } = useAuth();
