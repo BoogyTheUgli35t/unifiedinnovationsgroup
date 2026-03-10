@@ -32,7 +32,10 @@ const dashboardItems = [
   { title: 'Crypto', url: '/dashboard/crypto', icon: TrendingUp },
   { title: 'Investments', url: '/dashboard/investments', icon: DollarSign },
   { title: 'Transfers', url: '/dashboard/transfers', icon: Send },
+  { title: 'Bill Pay', url: '/dashboard/bill-pay', icon: FileCheck },
+  { title: 'Statements', url: '/dashboard/statements', icon: FileCheck },
   { title: 'Documents', url: '/dashboard/documents', icon: FileCheck },
+  { title: 'Messages', url: '/dashboard/messages', icon: LifeBuoy },
   { title: 'Support', url: '/dashboard/support', icon: LifeBuoy },
   { title: 'Settings', url: '/dashboard/settings', icon: Settings },
 ];

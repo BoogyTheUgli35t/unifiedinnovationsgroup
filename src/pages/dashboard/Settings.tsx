@@ -153,6 +153,27 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        {/* Appearance */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {theme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />} Appearance
+            </CardTitle>
+            <CardDescription>Customize your visual experience</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Theme</p>
+                <p className="text-sm text-muted-foreground">Switch between dark and light mode</p>
+              </div>
+              <Button variant="outline" onClick={toggleTheme} className="gap-2">
+                {theme === 'dark' ? <><Sun className="h-4 w-4" /> Light Mode</> : <><Moon className="h-4 w-4" /> Dark Mode</>}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Change Password */}
         <Card>
           <CardHeader>

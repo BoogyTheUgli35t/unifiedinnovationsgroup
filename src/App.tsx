@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AdminGuard } from "@/components/admin/AdminGuard";
 import { SupportChatbot } from "@/components/chat/SupportChatbot";
@@ -43,6 +44,9 @@ import DashboardTransfers from "./pages/dashboard/Transfers";
 import DashboardSettings from "./pages/dashboard/Settings";
 import DashboardDocuments from "./pages/dashboard/Documents";
 import SupportTickets from "./pages/dashboard/SupportTickets";
+import BillPay from "./pages/dashboard/BillPay";
+import Statements from "./pages/dashboard/Statements";
+import DashboardMessages from "./pages/dashboard/Messages";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -63,68 +67,73 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Public Pages */}
-            <Route path="/" element={<Index />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            
-            {/* Product Pages */}
-            <Route path="/products" element={<ProductsIndex />} />
-            <Route path="/products/personal" element={<PersonalBanking />} />
-            <Route path="/products/business" element={<BusinessBanking />} />
-            <Route path="/products/crypto" element={<CryptoCenter />} />
-            <Route path="/products/investments" element={<Investments />} />
-            
-            {/* Legal Pages */}
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/security" element={<Security />} />
-            <Route path="/disclaimers" element={<Disclaimers />} />
-            
-            {/* Auth Pages */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/onboarding" element={
-              <ProtectedRoute skipOnboardingCheck>
-                <Onboarding />
-              </ProtectedRoute>
-            } />
-            
-            {/* Dashboard Routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardIndex /></ProtectedRoute>} />
-            <Route path="/dashboard/accounts" element={<ProtectedRoute><DashboardAccounts /></ProtectedRoute>} />
-            <Route path="/dashboard/crypto" element={<ProtectedRoute><DashboardCrypto /></ProtectedRoute>} />
-            <Route path="/dashboard/investments" element={<ProtectedRoute><DashboardInvestments /></ProtectedRoute>} />
-            <Route path="/dashboard/transfers" element={<ProtectedRoute><DashboardTransfers /></ProtectedRoute>} />
-            <Route path="/dashboard/documents" element={<ProtectedRoute><DashboardDocuments /></ProtectedRoute>} />
-            <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
-            <Route path="/dashboard/support" element={<ProtectedRoute><SupportTickets /></ProtectedRoute>} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
-            <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
-            <Route path="/admin/users/:id" element={<AdminGuard><AdminUserDetail /></AdminGuard>} />
-            <Route path="/admin/transactions" element={<AdminGuard><AdminTransactions /></AdminGuard>} />
-            <Route path="/admin/crypto" element={<AdminGuard><AdminCrypto /></AdminGuard>} />
-            <Route path="/admin/compliance" element={<AdminGuard><AdminCompliance /></AdminGuard>} />
-            <Route path="/admin/funding" element={<AdminGuard><AdminFunding /></AdminGuard>} />
-            <Route path="/admin/logs" element={<AdminGuard><AdminLogs /></AdminGuard>} />
-            <Route path="/admin/tickets" element={<AdminGuard><AdminTickets /></AdminGuard>} />
-            <Route path="/admin/alerts" element={<AdminGuard><AdminAlerts /></AdminGuard>} />
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              {/* Public Pages */}
+              <Route path="/" element={<Index />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
+              
+              {/* Product Pages */}
+              <Route path="/products" element={<ProductsIndex />} />
+              <Route path="/products/personal" element={<PersonalBanking />} />
+              <Route path="/products/business" element={<BusinessBanking />} />
+              <Route path="/products/crypto" element={<CryptoCenter />} />
+              <Route path="/products/investments" element={<Investments />} />
+              
+              {/* Legal Pages */}
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/security" element={<Security />} />
+              <Route path="/disclaimers" element={<Disclaimers />} />
+              
+              {/* Auth Pages */}
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/onboarding" element={
+                <ProtectedRoute skipOnboardingCheck>
+                  <Onboarding />
+                </ProtectedRoute>
+              } />
+              
+              {/* Dashboard Routes */}
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardIndex /></ProtectedRoute>} />
+              <Route path="/dashboard/accounts" element={<ProtectedRoute><DashboardAccounts /></ProtectedRoute>} />
+              <Route path="/dashboard/crypto" element={<ProtectedRoute><DashboardCrypto /></ProtectedRoute>} />
+              <Route path="/dashboard/investments" element={<ProtectedRoute><DashboardInvestments /></ProtectedRoute>} />
+              <Route path="/dashboard/transfers" element={<ProtectedRoute><DashboardTransfers /></ProtectedRoute>} />
+              <Route path="/dashboard/documents" element={<ProtectedRoute><DashboardDocuments /></ProtectedRoute>} />
+              <Route path="/dashboard/settings" element={<ProtectedRoute><DashboardSettings /></ProtectedRoute>} />
+              <Route path="/dashboard/support" element={<ProtectedRoute><SupportTickets /></ProtectedRoute>} />
+              <Route path="/dashboard/bill-pay" element={<ProtectedRoute><BillPay /></ProtectedRoute>} />
+              <Route path="/dashboard/statements" element={<ProtectedRoute><Statements /></ProtectedRoute>} />
+              <Route path="/dashboard/messages" element={<ProtectedRoute><DashboardMessages /></ProtectedRoute>} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+              <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
+              <Route path="/admin/users/:id" element={<AdminGuard><AdminUserDetail /></AdminGuard>} />
+              <Route path="/admin/transactions" element={<AdminGuard><AdminTransactions /></AdminGuard>} />
+              <Route path="/admin/crypto" element={<AdminGuard><AdminCrypto /></AdminGuard>} />
+              <Route path="/admin/compliance" element={<AdminGuard><AdminCompliance /></AdminGuard>} />
+              <Route path="/admin/funding" element={<AdminGuard><AdminFunding /></AdminGuard>} />
+              <Route path="/admin/logs" element={<AdminGuard><AdminLogs /></AdminGuard>} />
+              <Route path="/admin/tickets" element={<AdminGuard><AdminTickets /></AdminGuard>} />
+              <Route path="/admin/alerts" element={<AdminGuard><AdminAlerts /></AdminGuard>} />
 
-            {/* Catch-all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          
-          {/* Global Support Chatbot */}
-          <SupportChatbot />
-        </BrowserRouter>
-      </AuthProvider>
+              {/* Catch-all */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            
+            {/* Global Support Chatbot */}
+            <SupportChatbot />
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
