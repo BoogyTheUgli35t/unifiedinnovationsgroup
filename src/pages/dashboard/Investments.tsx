@@ -3,19 +3,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
+import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
-import { TrendingUp, BarChart3, DollarSign, PieChart, ArrowUpRight, Shield, Zap, Globe } from 'lucide-react';
-import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
+import { TrendingUp, BarChart3, DollarSign, PieChart, Shield, Zap, Globe, ArrowUpRight, ArrowDownRight, Wallet } from 'lucide-react';
+import { PieChart as RechartsPie, Pie, Cell, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-// UIG Investment Hub - Model Portfolios
 const MODEL_PORTFOLIOS = [
   {
+    id: 'conservative',
     name: 'UIG Conservative',
-    risk: 'Low',
+    risk: 'Low' as const,
     description: 'Capital preservation with steady income. Bonds, treasuries, and blue-chip dividends.',
     allocation: [
       { name: 'US Treasuries', value: 40, color: '#3b82f6' },
@@ -25,10 +30,12 @@ const MODEL_PORTFOLIOS = [
     ],
     ytdReturn: 5.8,
     annualReturn: 6.2,
+    dailyChange: 0.12,
   },
   {
+    id: 'balanced',
     name: 'UIG Balanced Growth',
-    risk: 'Medium',
+    risk: 'Medium' as const,
     description: 'Diversified mix targeting long-term growth with moderate risk.',
     allocation: [
       { name: 'US Equities', value: 35, color: '#22c55e' },
@@ -39,10 +46,12 @@ const MODEL_PORTFOLIOS = [
     ],
     ytdReturn: 12.4,
     annualReturn: 10.8,
+    dailyChange: -0.34,
   },
   {
+    id: 'aggressive',
     name: 'UIG Aggressive Alpha',
-    risk: 'High',
+    risk: 'High' as const,
     description: 'Maximum growth through tech, emerging markets, and digital assets.',
     allocation: [
       { name: 'Growth Tech', value: 35, color: '#8b5cf6' },
@@ -53,6 +62,7 @@ const MODEL_PORTFOLIOS = [
     ],
     ytdReturn: 22.6,
     annualReturn: 18.3,
+    dailyChange: 1.45,
   },
 ];
 
@@ -68,11 +78,183 @@ const PERFORMANCE_DATA = [
   { month: 'Mar', conservative: 103.8, balanced: 112.4, aggressive: 122.6 },
 ];
 
+const LEARN_ARTICLES = [
+  {
+    icon: Shield,
+    title: 'Risk Management',
+    summary: 'Learn how UIG portfolios are designed to manage downside risk while capturing upside potential.',
+    content: `Risk management is the cornerstone of intelligent investing. At UIG, our portfolios use multiple layers of protection:
+
+**Diversification**: By spreading investments across asset classes, geographies, and sectors, we reduce the impact of any single investment's decline.
+
+**Rebalancing**: Our system automatically rebalances portfolios when allocations drift more than 5% from targets, locking in gains and buying undervalued assets.
+
+**Stop-Loss Protocols**: For higher-risk portfolios, we implement trailing stop-losses to protect against sudden market downturns.
+
+**Stress Testing**: Each portfolio is regularly stress-tested against historical crash scenarios (2008, 2020, etc.) to ensure resilience.`,
+  },
+  {
+    icon: Globe,
+    title: 'Global Diversification',
+    summary: 'Why investing across geographies and asset classes reduces volatility and improves returns.',
+    content: `Global diversification is one of the most powerful tools for reducing portfolio risk without sacrificing returns.
+
+**Why Go Global?**
+- Markets in different countries don't move in lockstep
+- Emerging economies often grow faster than developed ones
+- Currency diversification adds another layer of protection
+
+**UIG's Approach:**
+- US Equities for stability and innovation exposure
+- European markets for value and dividends
+- Asian markets for growth potential
+- Frontier markets for asymmetric opportunities
+
+**Key Insight**: Over the past 20 years, a globally diversified portfolio has outperformed a US-only portfolio with 30% less volatility.`,
+  },
+  {
+    icon: DollarSign,
+    title: 'Dollar-Cost Averaging',
+    summary: 'How recurring investments smooth out market timing risk and build wealth consistently.',
+    content: `Dollar-cost averaging (DCA) is the strategy of investing fixed amounts at regular intervals, regardless of market conditions.
+
+**How It Works:**
+- Invest $500 every month into your chosen portfolio
+- When prices are high, you buy fewer shares
+- When prices are low, you buy more shares
+- Over time, your average cost per share tends to be lower
+
+**The Math:**
+If you invested $6,000 as a lump sum vs. $500/month over 12 months, DCA would have yielded 8-12% better risk-adjusted returns in volatile markets.
+
+**UIG Auto-Invest**: Set up recurring investments from your checking account to automatically build your portfolio over time.`,
+  },
+  {
+    icon: BarChart3,
+    title: 'Tax-Efficient Investing',
+    summary: 'Strategies to minimize your tax burden through smart asset location and harvesting.',
+    content: `Tax efficiency can add 1-2% to your annual returns over time. Here's how UIG optimizes for taxes:
+
+**Tax-Loss Harvesting**: When an investment drops in value, we sell it to realize the loss (which offsets gains) and immediately reinvest in a similar asset.
+
+**Asset Location**: We place tax-inefficient investments (bonds, REITs) in tax-advantaged accounts and tax-efficient ones (growth stocks) in taxable accounts.
+
+**Long-Term Holding**: By holding investments for over one year, you qualify for lower long-term capital gains rates (15-20% vs. up to 37%).
+
+**Municipal Bonds**: For high-income investors, we include tax-free municipal bonds to boost after-tax yields.`,
+  },
+];
+
+// Simple local storage for user investment positions (simulated)
+function useInvestmentPositions(userId: string | undefined) {
+  const key = `uig_investments_${userId}`;
+  const [positions, setPositions] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) setPositions(JSON.parse(saved));
+    } catch {}
+  }, [userId, key]);
+
+  const invest = (portfolioId: string, amount: number) => {
+    const updated = { ...positions, [portfolioId]: (positions[portfolioId] || 0) + amount };
+    setPositions(updated);
+    localStorage.setItem(key, JSON.stringify(updated));
+  };
+
+  const withdraw = (portfolioId: string, amount: number) => {
+    const current = positions[portfolioId] || 0;
+    const newVal = Math.max(0, current - amount);
+    const updated = { ...positions, [portfolioId]: newVal };
+    if (newVal === 0) delete updated[portfolioId];
+    setPositions(updated);
+    localStorage.setItem(key, JSON.stringify(updated));
+  };
+
+  return { positions, invest, withdraw };
+}
+
+function InvestDialog({ portfolio, accounts, onInvest }: {
+  portfolio: typeof MODEL_PORTFOLIOS[0];
+  accounts: Tables<'accounts'>[];
+  onInvest: (portfolioId: string, amount: number, accountId: string) => Promise<void>;
+}) {
+  const [amount, setAmount] = useState('');
+  const [accountId, setAccountId] = useState('');
+  const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!amount || !accountId) return;
+    setSubmitting(true);
+    await onInvest(portfolio.id, parseFloat(amount), accountId);
+    setSubmitting(false);
+    setOpen(false);
+    setAmount('');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="w-full" size="sm">
+          <Wallet className="h-4 w-4 mr-1" /> Invest Now
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Invest in {portfolio.name}</DialogTitle>
+          <DialogDescription>{portfolio.description}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label>Amount ($)</Label>
+            <Input type="number" placeholder="1000" min="100" step="100" value={amount} onChange={e => setAmount(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Fund From</Label>
+            <select
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              value={accountId}
+              onChange={e => setAccountId(e.target.value)}
+            >
+              <option value="">Select account</option>
+              {accounts.filter(a => ['checking', 'savings', 'investment'].includes(a.account_type)).map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.account_type.charAt(0).toUpperCase() + a.account_type.slice(1)} — ${Number(a.balance).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </option>
+              ))}
+            </select>
+          </div>
+          {amount && (
+            <div className="rounded-lg bg-muted p-3 text-sm space-y-1">
+              <div className="flex justify-between"><span className="text-muted-foreground">Portfolio:</span><span>{portfolio.name}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Risk Level:</span><Badge variant={portfolio.risk === 'Low' ? 'secondary' : portfolio.risk === 'Medium' ? 'default' : 'destructive'} className="text-xs">{portfolio.risk}</Badge></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Expected Annual Return:</span><span className="text-green-500">+{portfolio.annualReturn}%</span></div>
+              <div className="flex justify-between font-bold pt-1 border-t"><span>Investment Amount:</span><span>${parseFloat(amount || '0').toLocaleString()}</span></div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={submitting || !amount || !accountId}>
+            {submitting ? 'Processing...' : 'Confirm Investment'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Investments() {
   const { session } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [accounts, setAccounts] = useState<Tables<'accounts'>[]>([]);
   const [loading, setLoading] = useState(true);
+  const { positions, invest, withdraw } = useInvestmentPositions(session?.user?.id);
+
   const hasInvestmentAccount = accounts.some(a => a.account_type === 'investment');
 
   useEffect(() => {
@@ -84,6 +266,44 @@ export default function Investments() {
   }, [session?.user?.id]);
 
   const investmentAccount = accounts.find(a => a.account_type === 'investment');
+
+  // Calculate total invested and simulated P&L
+  const totalInvested = Object.values(positions).reduce((s, v) => s + v, 0);
+  const simulatedValue = Object.entries(positions).reduce((sum, [pid, amt]) => {
+    const portfolio = MODEL_PORTFOLIOS.find(p => p.id === pid);
+    if (!portfolio) return sum + amt;
+    const growth = 1 + (portfolio.ytdReturn / 100);
+    return sum + (amt * growth);
+  }, 0);
+  const totalPnl = simulatedValue - totalInvested;
+  const totalPnlPercent = totalInvested > 0 ? (totalPnl / totalInvested) * 100 : 0;
+
+  const handleInvest = async (portfolioId: string, amount: number, accountId: string) => {
+    const account = accounts.find(a => a.id === accountId);
+    if (!account || Number(account.balance) < amount) {
+      toast({ title: 'Insufficient funds', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      // Create a transaction record
+      if (session?.user?.id) {
+        await supabase.from('transactions').insert({
+          user_id: session.user.id,
+          account_id: accountId,
+          type: 'withdrawal',
+          amount: amount,
+          counterparty: `UIG ${MODEL_PORTFOLIOS.find(p => p.id === portfolioId)?.name || 'Portfolio'}`,
+          description: `Investment in ${MODEL_PORTFOLIOS.find(p => p.id === portfolioId)?.name}`,
+          status: 'completed',
+        });
+      }
+      invest(portfolioId, amount);
+      toast({ title: '✅ Investment placed', description: `$${amount.toLocaleString()} invested in ${MODEL_PORTFOLIOS.find(p => p.id === portfolioId)?.name}` });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+  };
 
   return (
     <DashboardLayout title="UIG Investment Hub" description="Managed portfolios and wealth building tools">
@@ -102,8 +322,35 @@ export default function Investments() {
               </div>
             </div>
           </CardHeader>
-          {hasInvestmentAccount && investmentAccount && (
-            <CardContent>
+          <CardContent>
+            {/* Always show portfolio summary if user has invested */}
+            {totalInvested > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-sm text-muted-foreground">Total Invested</p>
+                  <p className="text-2xl font-bold">${totalInvested.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-sm text-muted-foreground">Current Value</p>
+                  <p className="text-2xl font-bold">${simulatedValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-sm text-muted-foreground">Total Gain / Loss</p>
+                  <div className="flex items-center gap-1 mt-1">
+                    {totalPnl >= 0 ? <ArrowUpRight className="h-5 w-5 text-green-500" /> : <ArrowDownRight className="h-5 w-5 text-destructive" />}
+                    <p className={`text-2xl font-bold ${totalPnl >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                      ${Math.abs(totalPnl).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-sm text-muted-foreground">Return</p>
+                  <p className={`text-2xl font-bold ${totalPnlPercent >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                    {totalPnlPercent >= 0 ? '+' : ''}{totalPnlPercent.toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+            ) : hasInvestmentAccount && investmentAccount ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="rounded-lg bg-muted p-4">
                   <p className="text-sm text-muted-foreground">Investment Balance</p>
@@ -118,19 +365,57 @@ export default function Investments() {
                   <p className="font-mono text-sm mt-1">{investmentAccount.account_number}</p>
                 </div>
               </div>
-            </CardContent>
-          )}
-          {!hasInvestmentAccount && !loading && (
-            <CardContent>
+            ) : !loading ? (
               <div className="text-center py-4">
                 <p className="text-muted-foreground mb-4">Open an investment account to start building your portfolio.</p>
                 <Button onClick={() => navigate('/dashboard/accounts')}>
                   Open Investment Account
                 </Button>
               </div>
-            </CardContent>
-          )}
+            ) : null}
+          </CardContent>
         </Card>
+
+        {/* Active Positions */}
+        {Object.keys(positions).length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Your Active Positions</CardTitle>
+              <CardDescription>Live portfolio performance</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {Object.entries(positions).map(([pid, invested]) => {
+                  const portfolio = MODEL_PORTFOLIOS.find(p => p.id === pid);
+                  if (!portfolio || invested <= 0) return null;
+                  const currentVal = invested * (1 + portfolio.ytdReturn / 100);
+                  const pnl = currentVal - invested;
+                  const dailyPnl = invested * (portfolio.dailyChange / 100);
+
+                  return (
+                    <div key={pid} className="flex items-center justify-between p-4 rounded-lg border bg-card">
+                      <div>
+                        <p className="font-semibold">{portfolio.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          Invested: ${invested.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                        </p>
+                        <p className={`text-xs ${dailyPnl >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                          Today: {dailyPnl >= 0 ? '+' : ''}{dailyPnl.toFixed(2)} ({portfolio.dailyChange >= 0 ? '+' : ''}{portfolio.dailyChange}%)
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg">${currentVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                        <p className={`text-sm font-medium ${pnl >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                          {pnl >= 0 ? '▲' : '▼'} ${Math.abs(pnl).toLocaleString('en-US', { minimumFractionDigits: 2 })} ({portfolio.ytdReturn}%)
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Tabs defaultValue="portfolios" className="space-y-6">
           <TabsList className="grid grid-cols-3 w-full">
@@ -142,64 +427,78 @@ export default function Investments() {
           {/* Model Portfolios */}
           <TabsContent value="portfolios">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {MODEL_PORTFOLIOS.map((portfolio) => (
-                <Card key={portfolio.name} className="relative overflow-hidden">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{portfolio.name}</CardTitle>
-                      <Badge variant={portfolio.risk === 'Low' ? 'secondary' : portfolio.risk === 'Medium' ? 'default' : 'destructive'}>
-                        {portfolio.risk} Risk
-                      </Badge>
-                    </div>
-                    <CardDescription>{portfolio.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="h-40">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RechartsPie>
-                          <Pie
-                            data={portfolio.allocation}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={35}
-                            outerRadius={60}
-                            paddingAngle={3}
-                            dataKey="value"
-                          >
-                            {portfolio.allocation.map((entry, idx) => (
-                              <Cell key={idx} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip formatter={(value: number) => `${value}%`} />
-                        </RechartsPie>
-                      </ResponsiveContainer>
-                    </div>
+              {MODEL_PORTFOLIOS.map((portfolio) => {
+                const userInvested = positions[portfolio.id] || 0;
+                return (
+                  <Card key={portfolio.name} className="relative overflow-hidden flex flex-col">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-lg">{portfolio.name}</CardTitle>
+                        <Badge variant={portfolio.risk === 'Low' ? 'secondary' : portfolio.risk === 'Medium' ? 'default' : 'destructive'}>
+                          {portfolio.risk} Risk
+                        </Badge>
+                      </div>
+                      <CardDescription>{portfolio.description}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4 flex-1 flex flex-col">
+                      <div className="h-40">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPie>
+                            <Pie data={portfolio.allocation} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={3} dataKey="value">
+                              {portfolio.allocation.map((entry, idx) => (
+                                <Cell key={idx} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip formatter={(value: number) => `${value}%`} />
+                          </RechartsPie>
+                        </ResponsiveContainer>
+                      </div>
 
-                    <div className="space-y-1">
-                      {portfolio.allocation.map((a) => (
-                        <div key={a.name} className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full" style={{ background: a.color }} />
-                            <span className="text-muted-foreground">{a.name}</span>
+                      <div className="space-y-1">
+                        {portfolio.allocation.map((a) => (
+                          <div key={a.name} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full" style={{ background: a.color }} />
+                              <span className="text-muted-foreground">{a.name}</span>
+                            </div>
+                            <span className="font-medium">{a.value}%</span>
                           </div>
-                          <span className="font-medium">{a.value}%</span>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
 
-                    <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                      <div>
-                        <p className="text-xs text-muted-foreground">YTD Return</p>
-                        <p className="text-lg font-bold text-green-500">+{portfolio.ytdReturn}%</p>
+                      <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                        <div>
+                          <p className="text-xs text-muted-foreground">YTD Return</p>
+                          <p className={`text-lg font-bold ${portfolio.ytdReturn >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                            {portfolio.ytdReturn >= 0 ? '+' : ''}{portfolio.ytdReturn}%
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Annual Avg</p>
+                          <p className="text-lg font-bold text-green-500">+{portfolio.annualReturn}%</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Annual Avg</p>
-                        <p className="text-lg font-bold text-green-500">+{portfolio.annualReturn}%</p>
+
+                      {userInvested > 0 && (
+                        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-sm">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Your position:</span>
+                            <span className="font-bold">${(userInvested * (1 + portfolio.ytdReturn / 100)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">P&L:</span>
+                            <span className="font-bold text-green-500">+${(userInvested * portfolio.ytdReturn / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="mt-auto pt-2">
+                        <InvestDialog portfolio={portfolio} accounts={accounts} onInvest={handleInvest} />
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </TabsContent>
 
@@ -214,12 +513,11 @@ export default function Investments() {
                 <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={PERFORMANCE_DATA}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 30%, 18%)" />
-                      <XAxis dataKey="month" stroke="hsl(220, 15%, 55%)" />
-                      <YAxis stroke="hsl(220, 15%, 55%)" domain={['dataMin - 2', 'dataMax + 2']} />
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                      <XAxis dataKey="month" className="text-muted-foreground" />
+                      <YAxis className="text-muted-foreground" domain={['dataMin - 2', 'dataMax + 2']} />
                       <Tooltip
-                        contentStyle={{ background: 'hsl(220, 42%, 10%)', border: '1px solid hsl(220, 30%, 18%)', borderRadius: '8px' }}
-                        labelStyle={{ color: 'hsl(210, 20%, 95%)' }}
+                        contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', color: 'hsl(var(--foreground))' }}
                         formatter={(value: number) => [`$${value.toFixed(2)}`, '']}
                       />
                       <Line type="monotone" dataKey="conservative" stroke="#3b82f6" strokeWidth={2} name="Conservative" dot={false} />
@@ -237,30 +535,38 @@ export default function Investments() {
             </Card>
           </TabsContent>
 
-          {/* Learn Tab */}
+          {/* Learn Tab - Accordion */}
           <TabsContent value="learn">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { icon: Shield, title: 'Risk Management', desc: 'Learn how UIG portfolios are designed to manage downside risk while capturing upside potential.' },
-                { icon: Globe, title: 'Global Diversification', desc: 'Why investing across geographies and asset classes reduces volatility and improves returns.' },
-                { icon: DollarSign, title: 'Dollar-Cost Averaging', desc: 'How recurring investments smooth out market timing risk and build wealth consistently.' },
-                { icon: BarChart3, title: 'Tax-Efficient Investing', desc: 'Strategies to minimize your tax burden through smart asset location and harvesting.' },
-              ].map((item) => (
-                <Card key={item.title} className="hover:border-primary/30 transition-colors cursor-pointer">
-                  <CardHeader>
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <item.icon className="h-5 w-5 text-primary" />
-                      </div>
-                      <CardTitle className="text-base">{item.title}</CardTitle>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{item.desc}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Investment Education</CardTitle>
+                <CardDescription>Tap any topic to expand and learn more</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Accordion type="multiple" className="w-full">
+                  {LEARN_ARTICLES.map((item) => (
+                    <AccordionItem key={item.title} value={item.title}>
+                      <AccordionTrigger className="hover:no-underline">
+                        <div className="flex items-center gap-3 text-left">
+                          <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                            <item.icon className="h-5 w-5 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-base">{item.title}</p>
+                            <p className="text-sm text-muted-foreground font-normal">{item.summary}</p>
+                          </div>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent>
+                        <div className="pl-12 pr-4 text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+                          {item.content}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

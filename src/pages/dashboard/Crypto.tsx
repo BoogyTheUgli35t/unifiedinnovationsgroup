@@ -7,11 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tables } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
-import { TrendingUp, ArrowUpRight, ArrowDownLeft, Send, Download, ShoppingCart, DollarSign } from 'lucide-react';
+import { TrendingUp, ArrowUpRight, ArrowDownLeft, Send, Download, ShoppingCart, RefreshCw } from 'lucide-react';
 
 const CRYPTO_ASSETS = [
   { symbol: 'BTC', name: 'Bitcoin', price: 67432.50 },
@@ -33,37 +33,41 @@ export default function Crypto() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Trade form
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [selectedAsset, setSelectedAsset] = useState('');
   const [amount, setAmount] = useState('');
   const [fromAccount, setFromAccount] = useState('');
 
-  // Send/Receive
   const [sendAsset, setSendAsset] = useState('');
   const [sendAmount, setSendAmount] = useState('');
   const [recipientAddress, setRecipientAddress] = useState('');
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!session?.user?.id) return;
-    const load = async () => {
-      const [hRes, aRes, tRes] = await Promise.all([
-        supabase.from('crypto_holdings').select('*').eq('user_id', session.user.id),
-        supabase.from('accounts').select('*').eq('user_id', session.user.id).eq('status', 'active'),
-        supabase.from('transactions').select('*').eq('user_id', session.user.id).in('type', ['crypto_buy', 'crypto_sell']).order('created_at', { ascending: false }).limit(20),
-      ]);
-      setHoldings(hRes.data || []);
-      setAccounts(aRes.data || []);
-      setTransactions(tRes.data || []);
-      setLoading(false);
-    };
-    load();
+    const [hRes, aRes, tRes] = await Promise.all([
+      supabase.from('crypto_holdings').select('*').eq('user_id', session.user.id),
+      supabase.from('accounts').select('*').eq('user_id', session.user.id).eq('status', 'active'),
+      supabase.from('transactions').select('*').eq('user_id', session.user.id).in('type', ['crypto_buy', 'crypto_sell']).order('created_at', { ascending: false }).limit(20),
+    ]);
+    setHoldings(hRes.data || []);
+    setAccounts(aRes.data || []);
+    setTransactions(tRes.data || []);
+    setLoading(false);
   }, [session?.user?.id]);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const totalValue = holdings.reduce((sum, h) => {
     const asset = CRYPTO_ASSETS.find(a => a.symbol === h.symbol);
     return sum + (Number(h.quantity) * (asset?.price || Number(h.average_cost)));
   }, 0);
+
+  const totalCostBasis = holdings.reduce((sum, h) => {
+    return sum + (Number(h.quantity) * Number(h.average_cost));
+  }, 0);
+
+  const totalPnl = totalValue - totalCostBasis;
+  const totalPnlPercent = totalCostBasis > 0 ? (totalPnl / totalCostBasis) * 100 : 0;
 
   const handleTrade = async () => {
     if (!selectedAsset || !amount || !fromAccount || !session?.user?.id) {
@@ -97,7 +101,8 @@ export default function Crypto() {
 
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('transactions').insert({
+      // 1. Create transaction
+      const { error: txError } = await supabase.from('transactions').insert({
         user_id: session.user.id,
         account_id: fromAccount,
         type: tradeType === 'buy' ? 'crypto_buy' : 'crypto_sell',
@@ -105,15 +110,53 @@ export default function Crypto() {
         counterparty: `${asset.name} (${asset.symbol})`,
         description: `${tradeType === 'buy' ? 'Bought' : 'Sold'} ${numAmount} ${asset.symbol} @ $${asset.price.toLocaleString()}`,
         requires_approval: totalCost >= 10000,
-        status: 'pending',
+        status: totalCost >= 10000 ? 'pending' : 'completed',
       });
-      if (error) throw error;
-      toast({ title: `${tradeType === 'buy' ? 'Buy' : 'Sell'} order submitted`, description: totalCost >= 10000 ? 'Requires admin approval.' : 'Processing your order.' });
+      if (txError) throw txError;
+
+      // 2. Update crypto_holdings immediately (for orders < $10k, instant; >= $10k still recorded but marked pending)
+      const existingHolding = holdings.find(h => h.symbol === selectedAsset);
+
+      if (tradeType === 'buy') {
+        if (existingHolding) {
+          const oldQty = Number(existingHolding.quantity);
+          const oldCost = Number(existingHolding.average_cost);
+          const newQty = oldQty + numAmount;
+          const newAvgCost = ((oldQty * oldCost) + (numAmount * asset.price)) / newQty;
+          const { error } = await supabase.from('crypto_holdings')
+            .update({ quantity: newQty, average_cost: newAvgCost })
+            .eq('id', existingHolding.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('crypto_holdings').insert({
+            user_id: session.user.id,
+            symbol: asset.symbol,
+            name: asset.name,
+            quantity: numAmount,
+            average_cost: asset.price,
+          });
+          if (error) throw error;
+        }
+      } else {
+        // Sell - reduce holdings
+        if (existingHolding) {
+          const newQty = Number(existingHolding.quantity) - numAmount;
+          if (newQty <= 0.000001) {
+            // Remove holding entirely - but we can't delete, so set to 0
+            await supabase.from('crypto_holdings').update({ quantity: 0 }).eq('id', existingHolding.id);
+          } else {
+            await supabase.from('crypto_holdings').update({ quantity: newQty }).eq('id', existingHolding.id);
+          }
+        }
+      }
+
+      toast({
+        title: `${tradeType === 'buy' ? '✅ Buy' : '✅ Sell'} order executed`,
+        description: `${numAmount} ${asset.symbol} for $${totalCost.toLocaleString('en-US', { minimumFractionDigits: 2 })}${totalCost >= 10000 ? ' (pending admin approval)' : ''}`,
+      });
       setAmount('');
       setSelectedAsset('');
-      // Refresh transactions
-      const { data } = await supabase.from('transactions').select('*').eq('user_id', session.user.id).in('type', ['crypto_buy', 'crypto_sell']).order('created_at', { ascending: false }).limit(20);
-      setTransactions(data || []);
+      await loadData();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
@@ -126,8 +169,9 @@ export default function Crypto() {
       toast({ title: 'Missing fields', variant: 'destructive' });
       return;
     }
+    const numSend = parseFloat(sendAmount);
     const holding = holdings.find(h => h.symbol === sendAsset);
-    if (!holding || Number(holding.quantity) < parseFloat(sendAmount)) {
+    if (!holding || Number(holding.quantity) < numSend) {
       toast({ title: 'Insufficient holdings', variant: 'destructive' });
       return;
     }
@@ -140,21 +184,32 @@ export default function Crypto() {
     setSubmitting(true);
     try {
       const asset = CRYPTO_ASSETS.find(a => a.symbol === sendAsset);
-      const value = parseFloat(sendAmount) * (asset?.price || 0);
-      const { error } = await supabase.from('transactions').insert({
+      const value = numSend * (asset?.price || 0);
+
+      await supabase.from('transactions').insert({
         user_id: session.user.id,
         account_id: cryptoAccount.id,
         type: 'crypto_sell',
         amount: value,
         counterparty: recipientAddress,
-        description: `Sent ${sendAmount} ${sendAsset} to ${recipientAddress.slice(0, 8)}...`,
+        description: `Sent ${sendAmount} ${sendAsset} to ${recipientAddress.slice(0, 10)}...`,
         requires_approval: value >= 10000,
-        status: 'pending',
+        status: 'completed',
       });
-      if (error) throw error;
-      toast({ title: 'Send submitted', description: 'Your crypto transfer is being processed.' });
+
+      // Reduce holdings
+      const newQty = Number(holding.quantity) - numSend;
+      if (newQty <= 0.000001) {
+        await supabase.from('crypto_holdings').update({ quantity: 0 }).eq('id', holding.id);
+      } else {
+        await supabase.from('crypto_holdings').update({ quantity: newQty }).eq('id', holding.id);
+      }
+
+      toast({ title: '✅ Crypto sent', description: `${sendAmount} ${sendAsset} sent successfully.` });
       setSendAmount('');
       setRecipientAddress('');
+      setSendAsset('');
+      await loadData();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } finally {
@@ -164,6 +219,7 @@ export default function Crypto() {
 
   const selectedPrice = CRYPTO_ASSETS.find(a => a.symbol === selectedAsset)?.price || 0;
   const estimatedTotal = parseFloat(amount || '0') * selectedPrice;
+  const activeHoldings = holdings.filter(h => Number(h.quantity) > 0.000001);
 
   return (
     <DashboardLayout title="Crypto Portfolio" description="Buy, sell, send, and receive cryptocurrency">
@@ -176,6 +232,11 @@ export default function Crypto() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+              {activeHoldings.length > 0 && (
+                <p className={`text-sm font-medium mt-1 ${totalPnl >= 0 ? 'text-green-500' : 'text-destructive'}`}>
+                  {totalPnl >= 0 ? '▲' : '▼'} ${Math.abs(totalPnl).toLocaleString('en-US', { minimumFractionDigits: 2 })} ({totalPnlPercent.toFixed(2)}%)
+                </p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -183,18 +244,36 @@ export default function Crypto() {
               <CardDescription>Assets Held</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{holdings.length}</p>
+              <p className="text-3xl font-bold">{activeHoldings.length}</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {activeHoldings.map(h => h.symbol).join(', ') || 'None yet'}
+              </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Recent Trades</CardDescription>
+              <CardDescription>Cost Basis</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{transactions.length}</p>
+              <p className="text-3xl font-bold">${totalCostBasis.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+              <p className="text-sm text-muted-foreground mt-1">Total invested</p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Market Prices Bar */}
+        <Card>
+          <CardContent className="pt-4 pb-4">
+            <div className="flex gap-4 overflow-x-auto pb-1">
+              {CRYPTO_ASSETS.map(a => (
+                <div key={a.symbol} className="flex items-center gap-2 shrink-0 text-sm">
+                  <span className="font-semibold">{a.symbol}</span>
+                  <span className="text-muted-foreground">${a.price.toLocaleString()}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="trade" className="space-y-6">
           <TabsList className="grid grid-cols-4 w-full">
@@ -227,11 +306,15 @@ export default function Crypto() {
                     <Select value={selectedAsset} onValueChange={setSelectedAsset}>
                       <SelectTrigger><SelectValue placeholder="Select crypto" /></SelectTrigger>
                       <SelectContent>
-                        {CRYPTO_ASSETS.map(a => (
-                          <SelectItem key={a.symbol} value={a.symbol}>
-                            {a.name} ({a.symbol}) — ${a.price.toLocaleString()}
-                          </SelectItem>
-                        ))}
+                        {CRYPTO_ASSETS.map(a => {
+                          const held = activeHoldings.find(h => h.symbol === a.symbol);
+                          return (
+                            <SelectItem key={a.symbol} value={a.symbol}>
+                              {a.name} ({a.symbol}) — ${a.price.toLocaleString()}
+                              {held ? ` • Held: ${Number(held.quantity).toFixed(4)}` : ''}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -261,15 +344,18 @@ export default function Crypto() {
                       <span className="text-muted-foreground">Price per {selectedAsset}:</span>
                       <span>${selectedPrice.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between font-bold">
+                    <div className="flex justify-between font-bold text-lg">
                       <span>Estimated Total:</span>
                       <span>${estimatedTotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                     </div>
+                    {estimatedTotal >= 10000 && (
+                      <p className="text-xs text-amber-500">⚠ Orders ≥ $10,000 require admin approval</p>
+                    )}
                   </div>
                 )}
 
-                <Button onClick={handleTrade} disabled={submitting || !selectedAsset || !amount || !fromAccount} className="w-full">
-                  {submitting ? 'Processing...' : `${tradeType === 'buy' ? 'Buy' : 'Sell'} ${selectedAsset || 'Crypto'}`}
+                <Button onClick={handleTrade} disabled={submitting || !selectedAsset || !amount || !fromAccount} className="w-full" size="lg">
+                  {submitting ? 'Processing...' : `${tradeType === 'buy' ? '🟢 Buy' : '🔴 Sell'} ${selectedAsset || 'Crypto'}`}
                 </Button>
               </CardContent>
             </Card>
@@ -288,13 +374,12 @@ export default function Crypto() {
                   <Select value={sendAsset} onValueChange={setSendAsset}>
                     <SelectTrigger><SelectValue placeholder="Select asset" /></SelectTrigger>
                     <SelectContent>
-                      {holdings.map(h => (
+                      {activeHoldings.length > 0 ? activeHoldings.map(h => (
                         <SelectItem key={h.symbol} value={h.symbol}>
-                          {h.name} ({h.symbol}) — {Number(h.quantity).toLocaleString()} available
+                          {h.name} ({h.symbol}) — {Number(h.quantity).toLocaleString(undefined, { maximumFractionDigits: 6 })} available
                         </SelectItem>
-                      ))}
-                      {holdings.length === 0 && (
-                        <SelectItem value="_none" disabled>No holdings available</SelectItem>
+                      )) : (
+                        <SelectItem value="_none" disabled>No holdings — buy crypto first</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
@@ -357,18 +442,26 @@ export default function Crypto() {
 
           {/* Holdings Tab */}
           <TabsContent value="holdings">
-            {loading ? (
-              <div className="text-center text-muted-foreground py-8">Loading...</div>
-            ) : holdings.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6 text-center text-muted-foreground">
-                  <TrendingUp className="h-8 w-8 mx-auto mb-2" />
-                  <p>No crypto holdings yet. Use the Buy tab to get started!</p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-4">
-                {holdings.map((h) => {
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Your Holdings</h3>
+                <Button variant="ghost" size="sm" onClick={loadData}>
+                  <RefreshCw className="h-4 w-4 mr-1" /> Refresh
+                </Button>
+              </div>
+
+              {loading ? (
+                <div className="text-center text-muted-foreground py-8">Loading...</div>
+              ) : activeHoldings.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6 text-center text-muted-foreground">
+                    <TrendingUp className="h-8 w-8 mx-auto mb-2" />
+                    <p className="font-medium">No crypto holdings yet</p>
+                    <p className="text-sm mt-1">Use the Buy tab to purchase your first crypto!</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                activeHoldings.map((h) => {
                   const asset = CRYPTO_ASSETS.find(a => a.symbol === h.symbol);
                   const currentPrice = asset?.price || Number(h.average_cost);
                   const currentValue = Number(h.quantity) * currentPrice;
@@ -386,50 +479,53 @@ export default function Crypto() {
                             </div>
                             <div>
                               <p className="font-semibold">{h.name}</p>
-                              <p className="text-sm text-muted-foreground">{Number(h.quantity).toLocaleString()} {h.symbol}</p>
+                              <p className="text-sm text-muted-foreground">{Number(h.quantity).toLocaleString(undefined, { maximumFractionDigits: 6 })} {h.symbol}</p>
+                              <p className="text-xs text-muted-foreground">Avg cost: ${Number(h.average_cost).toLocaleString()}</p>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className="font-bold text-lg">${currentValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
                             <p className={`text-sm font-medium ${pnl >= 0 ? 'text-green-500' : 'text-destructive'}`}>
-                              {pnl >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
+                              {pnl >= 0 ? '▲' : '▼'} ${Math.abs(pnl).toLocaleString('en-US', { minimumFractionDigits: 2 })} ({pnlPercent.toFixed(2)}%)
                             </p>
                           </div>
                         </div>
                       </CardContent>
                     </Card>
                   );
-                })}
+                })
+              )}
 
-                {/* Recent Crypto Transactions */}
-                {transactions.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base">Recent Crypto Trades</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {transactions.slice(0, 5).map(tx => (
-                          <div key={tx.id} className="flex items-center justify-between p-2 rounded border">
-                            <div className="flex items-center gap-2">
-                              {tx.type === 'crypto_buy' ? <ArrowDownLeft className="h-4 w-4 text-green-500" /> : <ArrowUpRight className="h-4 w-4 text-destructive" />}
-                              <div>
-                                <p className="text-sm font-medium">{tx.counterparty}</p>
-                                <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleDateString()}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-bold">${Number(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
-                              <Badge variant="outline" className="text-xs">{tx.status}</Badge>
+              {/* Recent Crypto Transactions */}
+              {transactions.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Recent Crypto Trades</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {transactions.slice(0, 10).map(tx => (
+                        <div key={tx.id} className="flex items-center justify-between p-2 rounded border">
+                          <div className="flex items-center gap-2">
+                            {tx.type === 'crypto_buy' ? <ArrowDownLeft className="h-4 w-4 text-green-500" /> : <ArrowUpRight className="h-4 w-4 text-destructive" />}
+                            <div>
+                              <p className="text-sm font-medium">{tx.description || tx.counterparty}</p>
+                              <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            )}
+                          <div className="text-right">
+                            <p className="text-sm font-bold">${Number(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                            <Badge variant={tx.status === 'completed' ? 'default' : tx.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
+                              {tx.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
