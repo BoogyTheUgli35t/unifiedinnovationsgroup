@@ -14,6 +14,7 @@ import Index from "./pages/Index";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
 import NotFound from "./pages/NotFound";
+import OAuthConsent from "./pages/OAuthConsent";
 
 // Product Pages
 import ProductsIndex from "./pages/products/ProductsIndex";
@@ -94,6 +95,9 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* OAuth consent (MCP agent integrations) */}
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/onboarding" element={
                 <ProtectedRoute skipOnboardingCheck>
                   <Onboarding />

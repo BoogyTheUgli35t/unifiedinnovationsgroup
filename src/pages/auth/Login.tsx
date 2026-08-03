@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,9 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get("next");
+  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -37,7 +40,11 @@ const Login = () => {
         description: "You have successfully logged in.",
       });
       // ProtectedRoute handles onboarding redirect
-      navigate("/dashboard");
+      if (nextPath) {
+        window.location.href = nextPath;
+      } else {
+        navigate("/dashboard");
+      }
     }
 
     setIsLoading(false);
