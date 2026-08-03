@@ -95,6 +95,9 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* OAuth consent (MCP agent integrations) */}
+              <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
               <Route path="/onboarding" element={
                 <ProtectedRoute skipOnboardingCheck>
                   <Onboarding />
