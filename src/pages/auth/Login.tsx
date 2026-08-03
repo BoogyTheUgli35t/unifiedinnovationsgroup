@@ -40,7 +40,11 @@ const Login = () => {
         description: "You have successfully logged in.",
       });
       // ProtectedRoute handles onboarding redirect
-      navigate("/dashboard");
+      if (nextPath) {
+        window.location.href = nextPath;
+      } else {
+        navigate("/dashboard");
+      }
     }
 
     setIsLoading(false);
